@@ -1,78 +1,8 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Collections.Concurrent;
-using System.Threading;
-using System.Text;
 using System.Diagnostics;
-using System.Threading.Tasks;
-using Microsoft.Azure.Devices;
-using System.Linq;
-using System.Collections.Generic;
 
-namespace EndToEndTests
+namespace EndToEndTests.Helpers
 {
-    class DeviceIdentity
-    {
-        Device device_;
-        RegistryManager registry_;
-        private readonly string deviceConnectionString_;
-
-        public DeviceIdentity(string connectionString)
-        {
-            var id = "SimpleSample_" + Guid.NewGuid().ToString();
-
-            // Add a new device to IoT Hub
-            registry_ = RegistryManager.CreateFromConnectionString(connectionString);
-            Task<Device> newDevice = registry_.AddDeviceAsync(new Device(id));
-            newDevice.Wait();
-            device_ = newDevice.Result;
-
-            Console.WriteLine("Registered device: {0}", device_.Id);
-
-            // create a device connection string
-            string hostName = connectionString.Split(';')[0];
-            deviceConnectionString_ = String.Format("{0};DeviceId={1};SharedAccessKey={2}",
-                hostName, device_.Id, device_.Authentication.SymmetricKey.PrimaryKey);
-        }
-
-        ~DeviceIdentity()
-        {
-            try
-            {
-                registry_.RemoveDeviceAsync(device_).Wait();
-                Console.WriteLine("*Unregistered device: {0}", device_.Id);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-        }
-
-        public string ConnectionString()
-        {
-            return deviceConnectionString_;
-        }
-
-        public void Refresh()
-        {
-            Task<Device> deviceTask = registry_.GetDeviceAsync(device_.Id);
-            deviceTask.Wait();
-
-            device_ = deviceTask.Result;
-        }
-
-        public string GetSystemProperty(string name)
-        {
-            if (device_.SystemProperties.ContainsKey(name))
-            {
-                return device_.SystemProperties[name].Value.ToString();
-            }
-
-            Console.WriteLine("{0} not found in SystemProperties", name);
-            return String.Empty;
-        }
-    }
-
     class RegistrationFailedEventArgs : EventArgs
     {
         public readonly string Message;
@@ -103,11 +33,6 @@ namespace EndToEndTests
             Name = name;
             Value = value;
         }
-    }
-
-    class ClientRegistrationFailedException : UnitTestAssertException
-    {
-        public ClientRegistrationFailedException(string message) : base(message) {}
     }
 
     interface IClientEvents
@@ -172,23 +97,30 @@ namespace EndToEndTests
 
         ~Client()
         {
+            Stop();
+        }
+
+        public void Stop()
+        {
+            if (process_ == null) return;
+
+            RegisteredEvent -= events_.HandleRegistered;
+            RegistrationFailed -= events_.HandleRegistrationFailed;
+            ResourceReadEvent -= events_.HandleResourceRead;
+            ResourceWrittenEvent -= events_.HandleResourceWritten;
+            ResourceExecutedEvent -= events_.HandleResourceExecuted;
+            ClientSentNotifyMessageEvent -= events_.HandleClientSentNotifyMessage;
+
             try
             {
                 process_.Kill();
                 process_.WaitForExit();
+                process_ = null;
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
             }
-
-            // would this happen automatically anyway?
-            this.RegisteredEvent -= events_.HandleRegistered;
-            this.RegistrationFailed -= events_.HandleRegistrationFailed;
-            this.ResourceReadEvent -= events_.HandleResourceRead;
-            this.ResourceWrittenEvent -= events_.HandleResourceWritten;
-            this.ResourceExecutedEvent -= events_.HandleResourceExecuted;
-            this.ClientSentNotifyMessageEvent -= events_.HandleClientSentNotifyMessage;
         }
 
         void OnReceivedStdout(object caller, DataReceivedEventArgs eArgs)
@@ -299,127 +231,6 @@ namespace EndToEndTests
         protected void OnClientSentNotifyMessageEvent(ProcessedOutputEventArgs e)
         {
             ClientSentNotifyMessageEvent(this, e);
-        }
-    }
-
-    class ClientEvents : IClientEvents
-    {
-        // Event                Key             Notes
-        // Registered                           sent once per client instance
-        // RegistrationError                    sent once per client instance in the event of an error
-        // Executed             [exec.name]     sent when a job requests that a resource be executed
-        // Read                 [read.name]     sent when the client reads a resource (due to observe or read job)
-        // Written              [write.name]    sent when the client updates a resource (due to underlying resource change or write job)
-        // Notified             [notify.name]   sent for each observed property, at a frequency specified by write attributes
-
-        public ManualResetEvent clientIsRegistered = new ManualResetEvent(false);
-        public ConcurrentDictionary<string, string> store = new ConcurrentDictionary<string, string>();
-
-        public void HandleRegistered(object sender, EventArgs e)
-        {
-            Assert.IsFalse(clientIsRegistered.WaitOne(0), "Client already registered with service");
-            clientIsRegistered.Set();
-        }
-
-        public void HandleRegistrationFailed(object sender, RegistrationFailedEventArgs e)
-        {
-            throw new ClientRegistrationFailedException(e.Message);
-        }
-
-        public void HandleResourceRead(object sender, ProcessedOutputEventArgs e)
-        {
-            StoreEvent("read", e);
-        }
-
-        public void HandleResourceWritten(object sender, ProcessedOutputEventArgs e)
-        {
-            StoreEvent("write", e);
-        }
-
-        public void HandleResourceExecuted(object sender, ExecutedResourceEventArgs e)
-        {
-            var key = "exec." + e.Name;
-            store[key] = String.Empty;
-        }
-
-        public void HandleClientSentNotifyMessage(object sender, ProcessedOutputEventArgs e)
-        {
-            StoreEvent("notify", e);
-        }
-
-        private void StoreEvent(string keyType, ProcessedOutputEventArgs e)
-        {
-            var key = keyType + "." + e.Name;
-            store[key] = e.Value;
-        }
-    }
-
-    [TestClass]
-    public class DeviceManagementTests
-    {
-        static readonly string connectionString = Environment.GetEnvironmentVariable("IOTHUB_DM_CONNECTION_STRING");
-
-        DeviceIdentity device_;
-        ClientEvents events_;
-        Client client_;
-
-        public DeviceManagementTests()
-        {
-            device_ = new DeviceIdentity(connectionString);
-            events_ = new ClientEvents();
-            client_ = new Client(device_.ConnectionString(), events_);
-        }
-
-        [TestMethod, Timeout(600000)]
-        public void IotHubAutomaticallyObservesAllReadableResources()
-        {
-            Dictionary<string, string> expectedResources = new Dictionary<string, string>()
-            {
-                { "/1/0/1",       SystemPropertyNames.RegistrationLifetime },
-                { "/1/0/2",       SystemPropertyNames.DefaultMinPeriod },
-                { "/1/0/3",       SystemPropertyNames.DefaultMaxPeriod },
-                { "/3/0/0",       SystemPropertyNames.Manufacturer },
-                { "/3/0/1",       SystemPropertyNames.ModelNumber },
-                { "/3/0/2",       SystemPropertyNames.SerialNumber },
-                { "/3/0/3",       SystemPropertyNames.FirmwareVersion },
-                { "/3/0/9",       SystemPropertyNames.BatteryLevel },
-                { "/3/0/10",      SystemPropertyNames.MemoryFree },
-                { "/3/0/13",      SystemPropertyNames.CurrentTime },
-                { "/3/0/14",      SystemPropertyNames.UtcOffset },
-                { "/3/0/15",      SystemPropertyNames.Timezone },
-                { "/3/0/17",      SystemPropertyNames.DeviceDescription },
-                { "/3/0/18",      SystemPropertyNames.HardwareVersion },
-                { "/3/0/20",      SystemPropertyNames.BatteryStatus },
-                { "/3/0/21",      SystemPropertyNames.MemoryTotal },
-                { "/5/0/3",       SystemPropertyNames.FirmwareUpdateState },
-                { "/5/0/5",       SystemPropertyNames.FirmwareUpdateResult },
-                { "/5/0/6",       SystemPropertyNames.FirmwarePackageName },
-                { "/5/0/7",       SystemPropertyNames.FirmwarePackageVersion },
-                { "/10241/0/1",   "ConfigurationName" },
-                { "/10241/0/2",   "ConfigurationValue" }
-            };
-
-            // first, wait for the client to receive/respond to expected Observe requests
-            bool sentAllNotifies;
-            do
-            {
-                var actual = events_.store.Keys.Where(key => key.StartsWith("notify.")).Select(key => key.Split('.')[1]).OrderBy(key => key);
-                var expected = expectedResources.Keys.OrderBy(val => val);
-
-                sentAllNotifies = expected.SequenceEqual(actual);
-                Thread.Sleep(1000);
-            }
-            while (!sentAllNotifies);
-
-            // next, compare client values to server values
-            Thread.Sleep(10000);
-
-            device_.Refresh();
-
-            foreach(var res in expectedResources)
-            {
-                Assert.AreEqual(events_.store["notify." + res.Key], device_.GetSystemProperty(res.Value));
-            }
         }
     }
 }

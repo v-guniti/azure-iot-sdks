@@ -72,7 +72,10 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="UnitTest1.cs" />
+    <Compile Include="Helpers\Client.cs" />
+    <Compile Include="Helpers\ClientEventHandler.cs" />
+    <Compile Include="Helpers\DeviceIdentity.cs" />
+    <Compile Include="DeviceManagementTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
