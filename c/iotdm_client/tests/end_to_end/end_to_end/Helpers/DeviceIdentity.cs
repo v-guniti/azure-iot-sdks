@@ -54,6 +54,11 @@ namespace EndToEndTests.Helpers
             return deviceConnectionString_;
         }
 
+        public string Id()
+        {
+            return device_.Id;
+        }
+
         public void Refresh()
         {
             if (device_ == null) return;

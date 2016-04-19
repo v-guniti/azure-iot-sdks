@@ -144,10 +144,10 @@ namespace EndToEndTests.Helpers
                             OnResourceReadEvent(new ProcessedOutputEventArgs(name, value));
                         }
                         // 'Info: <name> being set to <value>'
-                        else if (data[1].Equals("being") && data[2].Equals("set"))
+                        else if (data[2].Equals("being") && data[3].Equals("set"))
                         {
                             string name = data[1];
-                            string value = data[data.Length - 1];
+                            string value = data[data.Length - 1].Trim(new char[] { '[', ']' });
                             OnResourceWrittenEvent(new ProcessedOutputEventArgs(name, value));
                         }
                         // 'Info: inside execute <???>'
