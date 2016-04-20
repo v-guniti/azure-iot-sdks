@@ -14,6 +14,7 @@ namespace EndToEndTests
     {
         const int oneMinute = 1000 * 60;
         static readonly string connectionString = Environment.GetEnvironmentVariable("IOTHUB_DM_CONNECTION_STRING");
+        static readonly string simpleSamplePath = Environment.GetEnvironmentVariable("IOTHUB_DM_SIMPLESAMPLE_PATH");
 
         DeviceIdentity device_;
         ClientEventHandler events_;
@@ -24,7 +25,7 @@ namespace EndToEndTests
         {
             device_ = new DeviceIdentity(connectionString);
             events_ = new ClientEventHandler();
-            client_ = new Client(device_.ConnectionString(), events_);
+            client_ = new Client(device_.ConnectionString(), simpleSamplePath, events_);
         }
 
         [TestCleanup]

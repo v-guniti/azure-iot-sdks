@@ -51,14 +51,11 @@ namespace EndToEndTests.Helpers
 
     class Client
     {
-        const string clientPath = "..\\..\\..\\..\\..\\..\\..\\..\\cmake-azure-iot-sdks\\iotdm_client\\samples\\iotdm_simple_sample\\Debug\\iotdm_simple_sample.exe";
-        // C:\Users\damonb\projects\azure-iot-sdks\c\iotdm_client\tests\end_to_end\end_to_end\bin\Debug\end_to_end.dll
-
         readonly string connectionString_;
         IClientEvents events_;
         Process process_;
 
-        public Client(string deviceConnectionString, IClientEvents clientEvents)
+        public Client(string deviceConnectionString, string simpleSamplePath, IClientEvents clientEvents)
         {
             connectionString_ = deviceConnectionString;
             events_ = clientEvents;
@@ -74,7 +71,7 @@ namespace EndToEndTests.Helpers
             // start client process
             var startInfo = new ProcessStartInfo()
             {
-                FileName = clientPath,
+                FileName = simpleSamplePath,
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 Arguments = connectionString_,
