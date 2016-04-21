@@ -127,5 +127,44 @@ namespace EndToEndTests
                 }
             }
         }
+
+        [TestMethod, Timeout(3 * oneMinute)]
+        public void IotHubCanRebootTheDevice()
+        {
+            // wait for client to register
+            events_.clientIsRegistered.WaitOne();
+
+            // invoke the write job
+            var jobClient = JobClient.CreateFromConnectionString(connectionString);
+            var jobId = Guid.NewGuid().ToString();
+
+            Task<JobResponse> job = jobClient.ScheduleRebootDeviceAsync(jobId, device_.Id());
+            job.Wait();
+            JobResponse response = job.Result;
+
+            // wait for the job to complete
+            while (response.Status < JobStatus.Completed)
+            {
+                Thread.Sleep(2000);
+                job = jobClient.GetJobAsync(jobId);
+                job.Wait();
+                response = job.Result;
+            }
+
+            Assert.AreEqual(JobStatus.Completed, response.Status);
+
+            // confirm we got execute message on client
+            string deviceReboot = "exec.Device_Reboot";
+
+            bool execMessageConfirmed = false;
+            while (!execMessageConfirmed)
+            {
+                Thread.Sleep(2000);
+                if (events_.store.ContainsKey(deviceReboot))
+                {
+                    execMessageConfirmed = true;
+                }
+            }
+        }
     }
 }
