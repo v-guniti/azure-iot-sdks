@@ -166,5 +166,46 @@ namespace EndToEndTests
                 }
             }
         }
+
+        [TestMethod, Timeout(3 * oneMinute)]
+        public void IotHubCanUpdateDeviceFirmware()
+        {
+            // wait for client to register
+            events_.clientIsRegistered.WaitOne();
+
+            // invoke the write job
+            var jobClient = JobClient.CreateFromConnectionString(connectionString);
+            var jobId = Guid.NewGuid().ToString();
+
+            Task<JobResponse> job = jobClient.ScheduleFirmwareUpdateAsync(jobId, device_.Id(), "http://www.bing.com", new TimeSpan(1, 0, 0));
+            job.Wait();
+            JobResponse response = job.Result;
+
+            // wait for the job to complete
+            while (response.Status < JobStatus.Completed)
+            {
+                Thread.Sleep(2000);
+                job = jobClient.GetJobAsync(jobId);
+                job.Wait();
+                response = job.Result;
+            }
+
+            Assert.AreEqual(JobStatus.Completed, response.Status);
+
+            // confirm that the client received the firmware update command and set the result
+            string deviceFirmwareUpdate = "exec.FirmwareUpdate_Update";
+            string deviceNotifyResult = "notify./5/0/5";
+
+            bool messagesConfirmed = false;
+            while (!messagesConfirmed)
+            {
+                Thread.Sleep(2000);
+                if (events_.store.ContainsKey(deviceFirmwareUpdate) &&
+                    events_.store.ContainsKey(deviceNotifyResult))
+                {
+                    messagesConfirmed = true;
+                }
+            }
+        }
     }
 }
