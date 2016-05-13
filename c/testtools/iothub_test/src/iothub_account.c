@@ -133,7 +133,7 @@ static HTTP_HEADERS_HANDLE getContentHeaders(bool appendIfMatch)
     return httpHeader;
 }
 
-static int generateDeviceName(IOTHUB_ACCOUNT_INFO* accountInfo, const char* callerName)
+static int generateDeviceId(IOTHUB_ACCOUNT_INFO* accountInfo, const char* callerName)
 {
     int result;
     char deviceGuid[DEVICE_GUID_SIZE];
@@ -283,7 +283,7 @@ static BUFFER_HANDLE sendDeviceRegistryInfo(IOTHUB_ACCOUNT_INFO* accountInfo, BU
 static int create_Device(IOTHUB_ACCOUNT_INFO* accountInfo, const char* callerName)
 {
     int result = 0;
-    if (generateDeviceName(accountInfo, callerName) != 0)
+    if (generateDeviceId(accountInfo, callerName) != 0)
     {
         result = __LINE__;
     }

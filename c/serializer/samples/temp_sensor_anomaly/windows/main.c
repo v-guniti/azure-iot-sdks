@@ -11,7 +11,7 @@
 #include "azure_c_shared_utility/platform.h"
 
 static const char* connectionString = "[device connection string]";
-static const char* deviceId = "[deviceName]"; /*must match the one on connectionString*/
+static const char* deviceId = "[deviceId]"; /*must match the one on connectionString*/
 
 // Define the Model
 BEGIN_NAMESPACE(Contoso);

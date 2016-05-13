@@ -87,6 +87,13 @@ extern "C"
 	typedef IOTHUBMESSAGE_DISPOSITION_RESULT (*IOTHUB_CLIENT_MESSAGE_CALLBACK_ASYNC)(IOTHUB_MESSAGE_HANDLE message, void* userContextCallback);
 	typedef const void*(*IOTHUB_CLIENT_TRANSPORT_PROVIDER)(void);
 
+#define IOTHUB_CLIENT_FILE_UPLOAD_RESULT_VALUES \
+    FILE_UPLOAD_OK ,\
+    FILE_UPLOAD_ERROR
+
+DEFINE_ENUM(IOTHUB_CLIENT_FILE_UPLOAD_RESULT, IOTHUB_CLIENT_FILE_UPLOAD_RESULT_VALUES)
+    typedef void(*IOTHUB_CLIENT_FILE_UPLOAD_CALLBACK)(IOTHUB_CLIENT_FILE_UPLOAD_RESULT result, void* userContextCallback);
+
 	/** @brief	This struct captures IoTHub client configuration. */
 	typedef struct IOTHUB_CLIENT_CONFIG_TAG
 	{
@@ -318,6 +325,17 @@ extern "C"
 	*/
 	extern IOTHUB_CLIENT_RESULT IoTHubClient_LL_SetOption(IOTHUB_CLIENT_LL_HANDLE iotHubClientHandle, const char* optionName, const void* value);
 
+    /**
+    * @brief	IoTHubClient_LL_UploadToBlob uploads data from memory to a file in Azure Blob Storage.
+    *
+    * @param	iotHubClientHandle	The handle created by a call to the IoTHubClient_LL_Create function.
+    * @param	destinationFileName	The name of the file to be created in Azure Blob Storage.
+    * @param	source              The source of data.
+    * @param	size                The size of data.
+    *
+    * @return	IOTHUB_CLIENT_OK upon success or an error code upon failure.
+    */
+    extern IOTHUB_CLIENT_RESULT IoTHubClient_LL_UploadToBlob(IOTHUB_CLIENT_LL_HANDLE iotHubClientHandle, const char* destinationFileName, const unsigned char* source, size_t size);
 #ifdef __cplusplus
 }
 #endif

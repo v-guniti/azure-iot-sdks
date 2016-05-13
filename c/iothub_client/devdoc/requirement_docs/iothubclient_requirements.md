@@ -1,5 +1,7 @@
 ﻿#IoTHubClient Requirements
  
+##References
+[Azure Storage Services REST API Reference](https://msdn.microsoft.com/en-us/library/azure/dd179355.aspx)
 
  
 ##Overview
@@ -20,10 +22,11 @@ extern IOTHUB_CLIENT_HANDLE IoTHubClient_CreateWithTransport(TRANSPORT_HANDLE tr
 extern void IoTHubClient_Destroy(IOTHUB_CLIENT_HANDLE iotHubClientHandle);
 
 extern IOTHUB_CLIENT_RESULT IoTHubClient_SendEventAsync(IOTHUB_CLIENT_HANDLE iotHubClientHandle, IOTHUB_MESSAGE_HANDLE eventMessageHandle, IOTHUB_CLIENT_EVENT_CONFIRMATION_CALLBACK eventConfirmationCallback, void* userContextCallback);
-    extern IOTHUB_CLIENT_RESULT IoTHubClient_SetMessageCallback(IOTHUB_CLIENT_HANDLE iotHubClientHandle, IOTHUB_CLIENT_MESSAGE_CALLBACK_ASYNC messageCallback, void* userContextCallback);
+extern IOTHUB_CLIENT_RESULT IoTHubClient_SetMessageCallback(IOTHUB_CLIENT_HANDLE iotHubClientHandle, IOTHUB_CLIENT_MESSAGE_CALLBACK_ASYNC messageCallback, void* userContextCallback);
 
-    extern IOTHUB_CLIENT_RESULT IoTHubClient_GetLastMessageReceiveTime(IOTHUB_CLIENT_HANDLE iotHubClientHandle, time_t* lastMessageReceiveTime);
+extern IOTHUB_CLIENT_RESULT IoTHubClient_GetLastMessageReceiveTime(IOTHUB_CLIENT_HANDLE iotHubClientHandle, time_t* lastMessageReceiveTime);
 extern IOTHUB_CLIENT_RESULT IoTHubClient_SetOption(IOTHUB_CLIENT_HANDLE iotHubClientHandle, const char* optionName, const void* value);
+extern IOTHUB_CLIENT_RESULT IoTHubClient_UploadToBlobAsync(IOTHUB_CLIENT_HANDLE iotHubClientHandle, const char* destinationFileName, const unsigned char* source, size_t size, IOTHUB_CLIENT_FILE_UPLOAD_CALLBACK iotHubClientFileUploadCallback, void* context);
 ```
 
 ## IoTHubClient_GetVersionString
@@ -43,6 +46,10 @@ extern IOTHUB_CLIENT_HANDLE IoTHubClient_CreateFromConnectionString(const char* 
 **SRS_IOTHUBCLIENT_12_003: [** IoTHubClient_CreateFromConnectionString shall verify the input parameters and if any of them NULL then return NULL  **]**
 
 **SRS_IOTHUBCLIENT_12_004: [** IoTHubClient_CreateFromConnectionString shall allocate a new IoTHubClient instance.  **]**
+
+**SRS_IOTHUBCLIENT_02_059: [** `IoTHubClient_CreateFromConnectionString` shall create a `LIST_HANDLE` containing `THREAD_HANDLE` (created by future calls to `IoTHubClient_UploadToBlobAsync`). **]** 
+
+**SRS_IOTHUBCLIENT_02_059: [** If creating the `LIST_HANDLE` fails then `IoTHubClient_CreateFromConnectionString` shall fail and return NULL**]**
 
 **SRS_IOTHUBCLIENT_12_011: [** If the allocation failed, IoTHubClient_CreateFromConnectionString returns NULL  **]**
 
@@ -66,6 +73,10 @@ extern IOTHUB_CLIENT_HANDLE IoTHubClient_Create(const IOTHUB_CLIENT_CONFIG* conf
 ```
 
 **SRS_IOTHUBCLIENT_01_001: [** IoTHubClient_Create shall allocate a new IoTHubClient instance and return a non-NULL handle to it. **]**
+
+**SRS_IOTHUBCLIENT_02_060: [** `IoTHubClient_Create` shall create a `LIST_HANDLE` containing `THREAD_HANDLE` (created by future calls to `IoTHubClient_UploadToBlobAsync`). **]**  
+
+**SRS_IOTHUBCLIENT_02_061: [** If creating the `LIST_HANDLE` fails then `IoTHubClient_Create` shall fail and return NULL. **]**
 
 **SRS_IOTHUBCLIENT_01_002: [** IoTHubClient_Create shall instantiate a new IoTHubClient_LL instance by calling IoTHubClient_LL_Create and passing the config argument. **]**
 
@@ -94,8 +105,11 @@ Create an IoTHubClient using an existing connection.
 
 **SRS_IOTHUBCLIENT_17_014: [** IoTHubClient_CreateWithTransport shall return NULL if config is NULL. **]**
 
-**SRS_IOTHUBCLIENT_17_001: [** IoTHubClient_CreateWithTransport shall allocate a new IoTHubClient instance and return a non-NULL handle to it.
- **]**
+**SRS_IOTHUBCLIENT_17_001: [** IoTHubClient_CreateWithTransport shall allocate a new IoTHubClient instance and return a non-NULL handle to it.**]**
+
+**SRS_IOTHUBCLIENT_02_062: [** `IoTHubClient_CreateWithTransport` shall create a `LIST_HANDLE` containing `THREAD_HANDLE` (created by future calls to `IoTHubClient_UploadToBlobAsync`). **]**  
+
+**SRS_IOTHUBCLIENT_02_063: [** If creating the `LIST_HANDLE` fails then `IoTHubClient_CreateWithTransport` shall fail and return NULL. **]**
  
  **SRS_IOTHUBCLIENT_17_002: [** If allocating memory for the new IoTHubClient instance fails, then IoTHubClient_CreateWithTransport shall return NULL. **]**
  
@@ -120,6 +134,8 @@ Create an IoTHubClient using an existing connection.
 extern void IoTHubClient_Destroy(IOTHUB_CLIENT_HANDLE iotHubClientHandle);
 ```
 **SRS_IOTHUBCLIENT_01_005: [** IoTHubClient_Destroy shall free all resources associated with the iotHubClientHandle instance. **]**
+
+**SRS_IOTHUBCLIENT_02_069: [** `IoTHubClient_Destroy` shall join all threads created by `IoTHubClient_UploadToBlobAsync` **]**
 
 **SRS_IOTHUBCLIENT_01_006: [** That includes destroying the IoTHubClient_LL instance by calling IoTHubClient_LL_Destroy. **]**
 
@@ -254,3 +270,38 @@ IoTHubClient_SetOption allows run-time changing of settings of the IoTHubClient.
 
 Options handled by IoTHubClient_SetOption:
 -none.
+
+##iotHubClientFileUploadCallbackInternal
+```c
+static iotHubClientFileUploadCallbackInternal(IOTHUB_CLIENT_FILE_UPLOAD_RESULT result, void* userContextCallback);
+```
+
+This function is called by the threads spawned by the calls to IoTHubClient_UploadToBlobAsync.
+Its purpose is to mark the threads as "terminated" so that they can be joined later.
+
+**SRS_IOTHUBCLIENT_02_064: [** `iotHubClientFileUploadCallbackInternal` assumes the `userContextCallback` is the same type as the structure created by SRS_IOTHUBCLIENT_02_051. **]**
+**SRS_IOTHUBCLIENT_02_065: [** If `userContextCallback`->threadHandle is not found in the list of handles to be joined then `iotHubClientFileUploadCallbackInternal` shall return (after angrily logging a passive aggresive error message). **]**
+**SRS_IOTHUBCLIENT_02_066: [** Otherwise `iotHubClientFileUploadCallbackInternal` shall mark the `THREAD_HANDLE` in the list of handles to be joined as "joinable". **]**
+**SRS_IOTHUBCLIENT_02_067: [** `iotHubClientFileUploadCallbackInternal` shall call `userContextCallback`->`iotHubClientFileUploadCallback` providing the `result` and original `context` as parameters. **]**
+**SRS_IOTHUBCLIENT_02_068: [** `iotHubClientFileUploadCallbackInternal` shall return. **]**
+
+##IoTHubClient_UploadToBlobAsync
+```c
+IOTHUB_CLIENT_RESULT IOTHUB_CLIENT_RESULT IoTHubClient_UploadToBlobAsync(IOTHUB_CLIENT_HANDLE iotHubClientHandle, const char* destinationFileName, const unsigned char* source, size_t size, IOTHUB_CLIENT_FILE_UPLOAD_CALLBACK iotHubClientFileUploadCallback, void* context);
+```
+
+`IoTHubClient_UploadToBlobAsync` asynchronously uploads the data pointed to by `source` having the size `size` to a file 
+called `destinationFileName` in Azure Blob Storage and calls `iotHubClientFileUploadCallback` once the operation has completed
+
+**SRS_IOTHUBCLIENT_02_047: [** If `iotHubClientHandle` is `NULL` then `IoTHubClient_UploadToBlobAsync` shall fail and return `IOTHUB_CLIENT_INVALID_ARG`. **]**
+**SRS_IOTHUBCLIENT_02_048: [** If `destinationFileName` is `NULL` then `IoTHubClient_UploadToBlobAsync` shall fail and return `IOTHUB_CLIENT_INVALID_ARG`. **]**
+**SRS_IOTHUBCLIENT_02_049: [** If `source` is NULL and size is greated than 0 then `IoTHubClient_UploadToBlobAsync` shall fail and return `IOTHUB_CLIENT_INVALID_ARG`. **]**
+**SRS_IOTHUBCLIENT_02_051: [** `IoTHubClient_UploadToBlobAsync` shall copy the `souce`, `size`, `iotHubClientFileUploadCallback`, `context` and a non-initialized(1) `THREAD_HANDLE` parameters into a structure. **]**
+**SRS_IOTHUBCLIENT_02_058: [** `IoTHubClient_UploadToBlobAsync` shall add a non-initialized THREAD_HANDLE(2) to the list of threadHandles that need to be joined. **]**
+**SRS_IOTHUBCLIENT_02_052: [** `IoTHubClient_UploadToBlobAsync` shall spawn a thread passing the structure build in SRS_IOTHUBCLIENT_02_051 as thread data. The THREAD_HANDLE shall be captured in the non-initialized(1) `THREAD_HANDLE`**]**
+**SRS_IOTHUBCLIENT_02_057: [** `IoTHubClient_UploadToBlobAsync` shal initialize the non-initialized `THREAD_HANDLE`(2) with the thread handle. **]**
+**SRS_IOTHUBCLIENT_02_053: [** If copying to the structure or spawning the thread fails, then `IoTHubClient_UploadToBlobAsync` shall fail and return `IOTHUB_CLIENT_INVALID_ARG`. **]**
+**SRS_IOTHUBCLIENT_02_054: [** The thread shall call `IoTHubClient_LL_UploadToBlob` passing the information packed in the structure.  **]**
+**SRS_IOTHUBCLIENT_02_055: [** If `IoTHubClient_LL_UploadToBlob` fails then the thread shall call `iotHubClientFileUploadCallbackInternal` passing as result `FILE_UPLOAD_ERROR` and as context the structure from SRS_IOTHUBCLIENT_02_051. **]**
+**SRS_IOTHUBCLIENT_02_056: [** Otherwise the thread `iotHubClientFileUploadCallbackInternal` passing as result `FILE_UPLOAD_OK` and the structure from SRS_IOTHUBCLIENT_02_051. **]**
+  

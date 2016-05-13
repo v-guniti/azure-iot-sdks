@@ -17,6 +17,7 @@
 #include "azure_c_shared_utility/threadapi.h"
 #include "azure_c_shared_utility/lock.h"
 #include "azure_c_shared_utility/iot_logging.h"
+#include "azure_c_shared_utility/list.h"
 
 typedef struct IOTHUB_CLIENT_INSTANCE_TAG
 {
@@ -25,6 +26,7 @@ typedef struct IOTHUB_CLIENT_INSTANCE_TAG
     THREAD_HANDLE ThreadHandle;
     LOCK_HANDLE LockHandle;
     sig_atomic_t StopThread;
+    LIST_HANDLE blobThreadsToBeJoined;
 } IOTHUB_CLIENT_INSTANCE;
 
 /*used by unittests only*/

@@ -11,6 +11,7 @@
 #include "azure_c_shared_utility/doublylinkedlist.h"
 #include "azure_c_shared_utility/iot_logging.h"
 #include "azure_c_shared_utility/tickcounter.h"
+#include "azure_c_shared_utility/httpapiexsas.h"
 
 #include "iothub_client_ll.h"
 #include "iothub_client_private.h"
@@ -21,6 +22,12 @@
 #define INDEFINITE_TIME ((time_t)(-1))
 
 DEFINE_ENUM_STRINGS(IOTHUB_CLIENT_RESULT, IOTHUB_CLIENT_RESULT_VALUES);
+
+#define AUTHORIZATION_SCHEME_VALUES \
+    DEVICE_KEY, \
+    SAS_TOKEN
+
+DEFINE_ENUM(AUTHORIZATION_SCHEME, AUTHORIZATION_SCHEME_VALUES);
 
 typedef struct IOTHUB_CLIENT_LL_HANDLE_DATA_TAG
 {
@@ -34,6 +41,13 @@ typedef struct IOTHUB_CLIENT_LL_HANDLE_DATA_TAG
 	time_t lastMessageReceiveTime;
 	TICK_COUNTER_HANDLE tickCounter; /*shared tickcounter used to track message timeouts in waitingToSend list*/
 	uint64_t currentMessageTimeout;
+    STRING_HANDLE deviceId;                     /*needed for file upload*/
+    const char* hostname;                       /*needed for file upload*/
+    AUTHORIZATION_SCHEME authorizationScheme;   /*needed for file upload*/
+    union { 
+        STRING_HANDLE deviceKey;    /*used when authorizationScheme is DEVICE_KEY*/
+        STRING_HANDLE sas;          /*used when authorizationScheme is SAS_TOKEN*/
+    } credentials;                              /*needed for file upload*/
 }IOTHUB_CLIENT_LL_HANDLE_DATA;
 
 static const char HOSTNAME_TOKEN[] = "HostName";
@@ -792,4 +806,11 @@ IOTHUB_CLIENT_RESULT IoTHubClient_LL_SetOption(IOTHUB_CLIENT_LL_HANDLE iotHubCli
 		}
 	}
 	return result;
+}
+
+IOTHUB_CLIENT_RESULT IoTHubClient_LL_UploadToBlob(IOTHUB_CLIENT_LL_HANDLE iotHubClientHandle, const char* destinationFileName, const unsigned char* source, size_t size)
+{
+    IOTHUB_CLIENT_LL_HANDLE_DATA* handleData = (IOTHUB_CLIENT_LL_HANDLE_DATA*)iotHubClientHandle;
+
+    return IOTHUB_CLIENT_OK;
 }
