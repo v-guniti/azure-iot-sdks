@@ -82,6 +82,7 @@ namespace Microsoft.Azure.Devices.Client
         readonly object thisLock = new object();
 
         volatile TaskCompletionSource<object> openTaskCompletionSource;
+        private HttpClientHelper httpClientHelper;
 
         DeviceClient(IotHubConnectionString iotHubConnectionString, ITransportSettings[] transportSettings)
         {
@@ -613,8 +614,16 @@ namespace Microsoft.Azure.Devices.Client
                 this.ThrowIfDisposed();
                 return this.impl.SendEventAsync(message).AsTaskOrAsyncOp();
 #if !PCL
-        }
+            }
 #endif
+        }
+
+        public void UploadToBlobAsync(String blobName, System.IO.Stream source)
+        {
+            Console.WriteLine("blobName= {0}, source= {1}", blobName, source);
+            Console.WriteLine("IoTHubConnectionString parts:\n");
+            HttpTransportHandler httpTransport = new HttpTransportHandler(this.iotHubConnectionString);
+            httpTransport.UploadBlobAsync(blobName, source);
         }
 
         /// <summary>

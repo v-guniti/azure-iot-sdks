@@ -174,6 +174,16 @@ namespace Microsoft.Azure.Devices.Client.Transport
                 CancellationToken.None);
         }
 
+        internal void UploadBlobAsync(String blobName, System.IO.Stream source)
+        {
+            //var responseMessage = await this.httpClientHelper.GetAsync<HttpResponseMessage>(
+            //    GetRequestUri(this.deviceId, CommonConstants.CloudBoundPathTemplate, queryValueDictionary),
+            //    ExceptionHandlingHelper.GetDefaultErrorMapping(),
+            //    customHeaders,
+            //    true,
+            //    CancellationToken.None);
+        }
+
         protected async override Task<Message> OnReceiveAsync(TimeSpan timeout)
         {
             // Long-polling is not supported

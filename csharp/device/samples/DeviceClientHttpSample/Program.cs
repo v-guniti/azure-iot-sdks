@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,10 @@ namespace Microsoft.Azure.Devices.Client.Samples
             try
             {
                 DeviceClient deviceClient = DeviceClient.CreateFromConnectionString(DeviceConnectionString, TransportType.Http1);
+
+                Console.WriteLine("Uploading File...\n");
+                FileStream fileStreamSource = new FileStream(@"c:\temp\ForFileUpload.txt", FileMode.Open);
+                deviceClient.UploadToBlobAsync(fileStreamSource.Name, fileStreamSource);
 
                 SendEvent(deviceClient).Wait();
                 ReceiveCommands(deviceClient).Wait();
