@@ -40,26 +40,26 @@ namespace EndToEndTests
         {
             Dictionary<string, string> expectedResources = new Dictionary<string, string>()
             {
-                { "/1/0/1",       SystemPropertyNames.RegistrationLifetime },
-                { "/1/0/2",       SystemPropertyNames.DefaultMinPeriod },
-                { "/1/0/3",       SystemPropertyNames.DefaultMaxPeriod },
-                { "/3/0/0",       SystemPropertyNames.Manufacturer },
-                { "/3/0/1",       SystemPropertyNames.ModelNumber },
-                { "/3/0/2",       SystemPropertyNames.SerialNumber },
-                { "/3/0/3",       SystemPropertyNames.FirmwareVersion },
-                { "/3/0/9",       SystemPropertyNames.BatteryLevel },
-                { "/3/0/10",      SystemPropertyNames.MemoryFree },
-                { "/3/0/13",      SystemPropertyNames.CurrentTime },
-                { "/3/0/14",      SystemPropertyNames.UtcOffset },
-                { "/3/0/15",      SystemPropertyNames.Timezone },
-                { "/3/0/17",      SystemPropertyNames.DeviceDescription },
-                { "/3/0/18",      SystemPropertyNames.HardwareVersion },
-                { "/3/0/20",      SystemPropertyNames.BatteryStatus },
-                { "/3/0/21",      SystemPropertyNames.MemoryTotal },
-                { "/5/0/3",       SystemPropertyNames.FirmwareUpdateState },
-                { "/5/0/5",       SystemPropertyNames.FirmwareUpdateResult },
-                { "/5/0/6",       SystemPropertyNames.FirmwarePackageName },
-                { "/5/0/7",       SystemPropertyNames.FirmwarePackageVersion },
+                { "/1/0/1",       DevicePropertyNames.RegistrationLifetime },
+                { "/1/0/2",       DevicePropertyNames.DefaultMinPeriod },
+                { "/1/0/3",       DevicePropertyNames.DefaultMaxPeriod },
+                { "/3/0/0",       DevicePropertyNames.Manufacturer },
+                { "/3/0/1",       DevicePropertyNames.ModelNumber },
+                { "/3/0/2",       DevicePropertyNames.SerialNumber },
+                { "/3/0/3",       DevicePropertyNames.FirmwareVersion },
+                { "/3/0/9",       DevicePropertyNames.BatteryLevel },
+                { "/3/0/10",      DevicePropertyNames.MemoryFree },
+                { "/3/0/13",      DevicePropertyNames.CurrentTime },
+                { "/3/0/14",      DevicePropertyNames.UtcOffset },
+                { "/3/0/15",      DevicePropertyNames.Timezone },
+                { "/3/0/17",      DevicePropertyNames.DeviceDescription },
+                { "/3/0/18",      DevicePropertyNames.HardwareVersion },
+                { "/3/0/20",      DevicePropertyNames.BatteryStatus },
+                { "/3/0/21",      DevicePropertyNames.MemoryTotal },
+                { "/5/0/3",       DevicePropertyNames.FirmwareUpdateState },
+                { "/5/0/5",       DevicePropertyNames.FirmwareUpdateResult },
+                { "/5/0/6",       DevicePropertyNames.FirmwarePackageName },
+                { "/5/0/7",       DevicePropertyNames.FirmwarePackageVersion },
                 { "/10241/0/1",   "ConfigurationName" },
                 { "/10241/0/2",   "ConfigurationValue" }
             };
@@ -98,7 +98,7 @@ namespace EndToEndTests
             var jobClient = JobClient.CreateFromConnectionString(connectionString);
             var jobId = Guid.NewGuid().ToString();
 
-            Task<JobResponse> job = jobClient.ScheduleSystemPropertyWriteAsync(jobId, device_.Id(), SystemPropertyNames.Timezone, expectedTimezone);
+            Task<JobResponse> job = jobClient.ScheduleDevicePropertyWriteAsync(jobId, device_.Id(), DevicePropertyNames.Timezone, expectedTimezone);
             job.Wait();
             JobResponse response = job.Result;
 

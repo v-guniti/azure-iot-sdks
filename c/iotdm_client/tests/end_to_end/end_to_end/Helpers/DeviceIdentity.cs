@@ -73,9 +73,9 @@ namespace EndToEndTests.Helpers
         {
             if (device_ == null) return String.Empty;
 
-            if (device_.SystemProperties.ContainsKey(name))
+            if (device_.DeviceProperties.ContainsKey(name))
             {
-                return device_.SystemProperties[name].Value.ToString();
+                return device_.DeviceProperties[name].Value.ToString();
             }
 
             Console.WriteLine("{0} not found in SystemProperties", name);
