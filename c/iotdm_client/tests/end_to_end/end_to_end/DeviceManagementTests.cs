@@ -169,6 +169,26 @@ namespace EndToEndTests
             }
         }
 
+        [TestMethod, Timeout(3 * oneMinute)]
+        public void IotHubCanFactoryResetTheDevice()
+        {
+            RunJob("Factory reset", (client, jobId, deviceId) => client.ScheduleFactoryResetDeviceAsync(jobId, deviceId));
+
+            // confirm that the client received the reboot command
+            string deviceFactoryReset = "exec.Device_FactoryReset";
+
+            bool execMessageConfirmed = false;
+            while (!execMessageConfirmed)
+            {
+                Thread.Sleep(2000);
+                if (events_.store.ContainsKey(deviceFactoryReset))
+                {
+                    Console.WriteLine("Client received factory reset command");
+                    execMessageConfirmed = true;
+                }
+            }
+        }
+
         [TestMethod, Timeout(5 * oneMinute)]
         public void IotHubCanUpdateDeviceFirmware()
         {
