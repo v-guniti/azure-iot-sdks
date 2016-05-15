@@ -26,6 +26,9 @@ namespace EndToEndTests
             device_ = new DeviceIdentity(connectionString);
             events_ = new ClientEventHandler();
             client_ = new Client(device_.ConnectionString(), simpleSamplePath, events_);
+
+            events_.clientIsRegistered.WaitOne();
+            Console.WriteLine("Client registered");
         }
 
         [TestCleanup]
@@ -76,14 +79,18 @@ namespace EndToEndTests
                 sentAllNotifies = expected.SequenceEqual(actual);
             }
 
+            Console.WriteLine("Client sent all Notify messages");
+
             // next, compare client values to server values
-            Thread.Sleep(10000);
+            Thread.Sleep(5000);
             device_.Refresh();
 
             foreach(var res in expectedResources)
             {
                 Assert.AreEqual(events_.store["notify." + res.Key], device_.GetSystemProperty(res.Value));
             }
+
+            Console.WriteLine("Service received all Notify messages");
         }
 
         [TestMethod, Timeout(3 * oneMinute)]
@@ -91,15 +98,13 @@ namespace EndToEndTests
         {
             const string expectedTimezone = "-10:00"; // US/Hawaii timezone
 
-            // wait for client to register
-            events_.clientIsRegistered.WaitOne();
-
             // invoke the write job
             var jobClient = JobClient.CreateFromConnectionString(connectionString);
             var jobId = Guid.NewGuid().ToString();
 
             Task<JobResponse> job = jobClient.ScheduleDevicePropertyWriteAsync(jobId, device_.Id(), DevicePropertyNames.Timezone, expectedTimezone);
             job.Wait();
+            Console.WriteLine("Write job scheduled");
             JobResponse response = job.Result;
 
             // wait for the job to complete
@@ -112,8 +117,9 @@ namespace EndToEndTests
             }
 
             Assert.AreEqual(JobStatus.Completed, response.Status);
+            Console.WriteLine("Write job completed");
 
-            // confirm we got write message on client
+            // confirm that the client received the write command
             string deviceTimezone = "write.Device_Timezone";
 
             bool writeMessageConfirmed = false;
@@ -123,6 +129,7 @@ namespace EndToEndTests
                 if (events_.store.ContainsKey(deviceTimezone) &&
                     String.Equals(expectedTimezone, events_.store[deviceTimezone]))
                 {
+                    Console.WriteLine("Client received write command");
                     writeMessageConfirmed = true;
                 }
             }
@@ -131,15 +138,13 @@ namespace EndToEndTests
         [TestMethod, Timeout(3 * oneMinute)]
         public void IotHubCanRebootTheDevice()
         {
-            // wait for client to register
-            events_.clientIsRegistered.WaitOne();
-
             // invoke the write job
             var jobClient = JobClient.CreateFromConnectionString(connectionString);
             var jobId = Guid.NewGuid().ToString();
 
             Task<JobResponse> job = jobClient.ScheduleRebootDeviceAsync(jobId, device_.Id());
             job.Wait();
+            Console.WriteLine("Reboot job scheduled");
             JobResponse response = job.Result;
 
             // wait for the job to complete
@@ -152,8 +157,9 @@ namespace EndToEndTests
             }
 
             Assert.AreEqual(JobStatus.Completed, response.Status);
+            Console.WriteLine("Reboot job completed");
 
-            // confirm we got execute message on client
+            // confirm that the client received the reboot command
             string deviceReboot = "exec.Device_Reboot";
 
             bool execMessageConfirmed = false;
@@ -162,23 +168,22 @@ namespace EndToEndTests
                 Thread.Sleep(2000);
                 if (events_.store.ContainsKey(deviceReboot))
                 {
+                    Console.WriteLine("Client received reboot command");
                     execMessageConfirmed = true;
                 }
             }
         }
 
-        [TestMethod, Timeout(3 * oneMinute)]
+        [TestMethod, Timeout(5 * oneMinute)]
         public void IotHubCanUpdateDeviceFirmware()
         {
-            // wait for client to register
-            events_.clientIsRegistered.WaitOne();
-
-            // invoke the write job
+            // invoke the firmware update job
             var jobClient = JobClient.CreateFromConnectionString(connectionString);
             var jobId = Guid.NewGuid().ToString();
 
             Task<JobResponse> job = jobClient.ScheduleFirmwareUpdateAsync(jobId, device_.Id(), "http://www.bing.com", new TimeSpan(1, 0, 0));
             job.Wait();
+            Console.WriteLine("Firmware update job scheduled");
             JobResponse response = job.Result;
 
             // wait for the job to complete
@@ -191,6 +196,7 @@ namespace EndToEndTests
             }
 
             Assert.AreEqual(JobStatus.Completed, response.Status);
+            Console.WriteLine("Firmware update job completed");
 
             // confirm that the client received the firmware update command and set the result
             string deviceFirmwareUpdate = "exec.FirmwareUpdate_Update";
@@ -200,11 +206,20 @@ namespace EndToEndTests
             while (!messagesConfirmed)
             {
                 Thread.Sleep(2000);
-                if (events_.store.ContainsKey(deviceFirmwareUpdate) &&
-                    events_.store.ContainsKey(deviceNotifyResult))
+                bool receivedCommand = events_.store.ContainsKey(deviceFirmwareUpdate);
+                bool notifiedResult = events_.store.ContainsKey(deviceNotifyResult);
+
+                if (receivedCommand)
                 {
-                    messagesConfirmed = true;
+                    Console.WriteLine("Client received firmware update command");
                 }
+
+                if (notifiedResult)
+                {
+                    Console.WriteLine("Client set firmware update result");
+                }
+
+                messagesConfirmed = receivedCommand && notifiedResult;
             }
         }
     }

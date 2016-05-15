@@ -167,13 +167,12 @@ namespace EndToEndTests.Helpers
                     Console.WriteLine("*Device failed to connect to DM channel");
                     OnRegistrationFailed(new RegistrationFailedEventArgs(eArgs.Data));
                 }
-                // 'Observe Update[/<object>/<instance>/<resource>]: <value-size> <value>'
-                else if (eArgs.Data.StartsWith("Observe Update"))
+                // 'Observe Request[/<object>/<instance>/<resource>]: <value>'
+                else if (eArgs.Data.StartsWith("Observe Request"))
                 {
                     string[] data = eArgs.Data.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    string uri = data[1].Substring(7, data[1].Length - 9);
-                    int size = Int32.Parse(data[2]);
-                    string value = data[3].Substring(0, size);
+                    string uri = data[1].Substring(8, data[1].Length - 10);
+                    string value = data[2];
 
                     if (uri == "/3/0/13")
                     {
