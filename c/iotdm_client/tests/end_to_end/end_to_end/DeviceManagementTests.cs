@@ -20,6 +20,32 @@ namespace EndToEndTests
         ClientEventHandler events_;
         Client client_;
 
+        delegate Task<JobResponse> ScheduleJobAsync(JobClient client, string jobId, string deviceId);
+
+        void RunJob(string jobName, ScheduleJobAsync jobFn)
+        {
+            // invoke the job
+            var jobClient = JobClient.CreateFromConnectionString(connectionString);
+            var jobId = Guid.NewGuid().ToString();
+
+            Task<JobResponse> job = jobFn(jobClient, jobId, device_.Id());
+            job.Wait();
+            Console.WriteLine("{0} job scheduled", jobName);
+            JobResponse response = job.Result;
+
+            // wait for the job to complete
+            while (response.Status < JobStatus.Completed)
+            {
+                Thread.Sleep(2000);
+                job = jobClient.GetJobAsync(jobId);
+                job.Wait();
+                response = job.Result;
+            }
+
+            Assert.AreEqual(JobStatus.Completed, response.Status);
+            Console.WriteLine("{0} job completed", jobName);
+        }
+
         [TestInitialize]
         public void BeforeEachTest()
         {
@@ -98,26 +124,7 @@ namespace EndToEndTests
         {
             const string expectedTimezone = "-10:00"; // US/Hawaii timezone
 
-            // invoke the write job
-            var jobClient = JobClient.CreateFromConnectionString(connectionString);
-            var jobId = Guid.NewGuid().ToString();
-
-            Task<JobResponse> job = jobClient.ScheduleDevicePropertyWriteAsync(jobId, device_.Id(), DevicePropertyNames.Timezone, expectedTimezone);
-            job.Wait();
-            Console.WriteLine("Write job scheduled");
-            JobResponse response = job.Result;
-
-            // wait for the job to complete
-            while (response.Status < JobStatus.Completed)
-            {
-                Thread.Sleep(2000);
-                job = jobClient.GetJobAsync(jobId);
-                job.Wait();
-                response = job.Result;
-            }
-
-            Assert.AreEqual(JobStatus.Completed, response.Status);
-            Console.WriteLine("Write job completed");
+            RunJob("Write", (client, jobId, deviceId) => client.ScheduleDevicePropertyWriteAsync(jobId, deviceId, DevicePropertyNames.Timezone, expectedTimezone));
 
             // confirm that the client received the write command
             string deviceTimezone = "write.Device_Timezone";
@@ -134,25 +141,7 @@ namespace EndToEndTests
                 }
             }
 
-            // invoke the read job
-            jobId = Guid.NewGuid().ToString();
-
-            job = jobClient.ScheduleDevicePropertyReadAsync(jobId, device_.Id(), DevicePropertyNames.Timezone);
-            job.Wait();
-            Console.WriteLine("Read job scheduled");
-            response = job.Result;
-
-            // wait for the job to complete
-            while (response.Status < JobStatus.Completed)
-            {
-                Thread.Sleep(2000);
-                job = jobClient.GetJobAsync(jobId);
-                job.Wait();
-                response = job.Result;
-            }
-
-            Assert.AreEqual(JobStatus.Completed, response.Status);
-            Console.WriteLine("Read job completed");
+            RunJob("Read", (client, jobId, deviceId) => client.ScheduleDevicePropertyReadAsync(jobId, deviceId, DevicePropertyNames.Timezone));
 
             // confirm that the device twin has the new property value
             device_.Refresh();
@@ -163,26 +152,7 @@ namespace EndToEndTests
         [TestMethod, Timeout(3 * oneMinute)]
         public void IotHubCanRebootTheDevice()
         {
-            // invoke the write job
-            var jobClient = JobClient.CreateFromConnectionString(connectionString);
-            var jobId = Guid.NewGuid().ToString();
-
-            Task<JobResponse> job = jobClient.ScheduleRebootDeviceAsync(jobId, device_.Id());
-            job.Wait();
-            Console.WriteLine("Reboot job scheduled");
-            JobResponse response = job.Result;
-
-            // wait for the job to complete
-            while (response.Status < JobStatus.Completed)
-            {
-                Thread.Sleep(2000);
-                job = jobClient.GetJobAsync(jobId);
-                job.Wait();
-                response = job.Result;
-            }
-
-            Assert.AreEqual(JobStatus.Completed, response.Status);
-            Console.WriteLine("Reboot job completed");
+            RunJob("Reboot", (client, jobId, deviceId) => client.ScheduleRebootDeviceAsync(jobId, deviceId));
 
             // confirm that the client received the reboot command
             string deviceReboot = "exec.Device_Reboot";
@@ -202,26 +172,7 @@ namespace EndToEndTests
         [TestMethod, Timeout(5 * oneMinute)]
         public void IotHubCanUpdateDeviceFirmware()
         {
-            // invoke the firmware update job
-            var jobClient = JobClient.CreateFromConnectionString(connectionString);
-            var jobId = Guid.NewGuid().ToString();
-
-            Task<JobResponse> job = jobClient.ScheduleFirmwareUpdateAsync(jobId, device_.Id(), "http://www.bing.com", new TimeSpan(1, 0, 0));
-            job.Wait();
-            Console.WriteLine("Firmware update job scheduled");
-            JobResponse response = job.Result;
-
-            // wait for the job to complete
-            while (response.Status < JobStatus.Completed)
-            {
-                Thread.Sleep(2000);
-                job = jobClient.GetJobAsync(jobId);
-                job.Wait();
-                response = job.Result;
-            }
-
-            Assert.AreEqual(JobStatus.Completed, response.Status);
-            Console.WriteLine("Firmware update job completed");
+            RunJob("Firmware update", (client, jobId, deviceId) => client.ScheduleFirmwareUpdateAsync(jobId, deviceId, "http://www.bing.com", new TimeSpan(1, 0, 0)));
 
             // confirm that the client received the firmware update command and set the result
             string deviceFirmwareUpdate = "exec.FirmwareUpdate_Update";
