@@ -133,6 +133,31 @@ namespace EndToEndTests
                     writeMessageConfirmed = true;
                 }
             }
+
+            // invoke the read job
+            jobId = Guid.NewGuid().ToString();
+
+            job = jobClient.ScheduleDevicePropertyReadAsync(jobId, device_.Id(), DevicePropertyNames.Timezone);
+            job.Wait();
+            Console.WriteLine("Read job scheduled");
+            response = job.Result;
+
+            // wait for the job to complete
+            while (response.Status < JobStatus.Completed)
+            {
+                Thread.Sleep(2000);
+                job = jobClient.GetJobAsync(jobId);
+                job.Wait();
+                response = job.Result;
+            }
+
+            Assert.AreEqual(JobStatus.Completed, response.Status);
+            Console.WriteLine("Read job completed");
+
+            // confirm that the device twin has the new property value
+            device_.Refresh();
+
+            Assert.AreEqual(expectedTimezone, device_.GetSystemProperty(DevicePropertyNames.Timezone));
         }
 
         [TestMethod, Timeout(3 * oneMinute)]
