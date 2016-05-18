@@ -2,7 +2,7 @@
 - 
 
 # Java SDK
-- 
+- Implemented message timeout for AMQP protocol.
 
 # C# Service SDK
 - 
