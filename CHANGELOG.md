@@ -20,6 +20,9 @@
 
 - 
 
+# Internal Changes
+- Fixed C longhaul tests for Windows, Linux and MBED platforms.
+
 
 Release for May 6, 2016
 
@@ -44,10 +47,12 @@ Release for May 6, 2016
 
 # General
 - Documentation fixes
+- Allow iothub-explorer users to generate device SAS tokens with 'sas-token' command
 
 # Bug fixes
 
 - GitHub issue #454: message-id and correlation-id properties now are exposed when using AMQP transport on IoT Hub C Device Client;
 - Java Device SDK - fixed a bug which was preventing message properties being sent over AMQP protocol.
 
-
+# Internal Changes
+- Add a CHANGELOG file to track changes that are going into the upcoming release;
