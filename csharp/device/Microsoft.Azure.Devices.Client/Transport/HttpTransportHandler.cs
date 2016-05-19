@@ -16,7 +16,7 @@ namespace Microsoft.Azure.Devices.Client.Transport
     using Microsoft.Azure.Devices.Client.Exceptions;
     using Microsoft.Azure.Devices.Client.Extensions;
     using Newtonsoft.Json;
-
+    using WindowsAzure.Storage.Blob;
     sealed class HttpTransportHandler : TransportHandlerBase
     {
         static readonly TimeSpan DefaultOperationTimeout = TimeSpan.FromSeconds(60);
@@ -174,14 +174,55 @@ namespace Microsoft.Azure.Devices.Client.Transport
                 CancellationToken.None);
         }
 
-        internal void UploadBlobAsync(String blobName, System.IO.Stream source)
+        internal async Task UploadBlobAsync(String blobName, System.IO.Stream source)
         {
-            //var responseMessage = await this.httpClientHelper.GetAsync<HttpResponseMessage>(
-            //    GetRequestUri(this.deviceId, CommonConstants.CloudBoundPathTemplate, queryValueDictionary),
-            //    ExceptionHandlingHelper.GetDefaultErrorMapping(),
-            //    customHeaders,
-            //    true,
-            //    CancellationToken.None);
+            try
+            {
+                // 1. Construct GET request to get SAS URI
+                HttpResponseMessage getResponseMessage = await this.httpClientHelper.GetAsync<HttpResponseMessage>(
+                    GetRequestUri(this.deviceId, CommonConstants.CloudBoundPathTemplate + blobName, null),
+                    ExceptionHandlingHelper.GetDefaultErrorMapping(),
+                    null,
+                    true,
+                    CancellationToken.None);
+
+                Console.WriteLine("HTTP GET Response ==> \n\n{0}\n\n", getResponseMessage.ToString());
+
+                var stringContent = await getResponseMessage.Content.ReadAsStringAsync();
+
+                FileUploadGetResponse getResponseData = JsonConvert.DeserializeObject<FileUploadGetResponse>(stringContent);
+
+                string putString = String.Format("https://{0}/{1}/{2}{3}",
+                    getResponseData.hostName,
+                    getResponseData.containerName,
+                    getResponseData.blobName,
+                    getResponseData.sasToken);
+
+                // 2. Use SAS URI to send data to Azure Storage Blob (PUT)
+                CloudBlockBlob blob = new CloudBlockBlob(new Uri(putString));
+                Console.WriteLine("URI: {0}", putString);
+                await blob.UploadFromStreamAsync(source);
+
+                // 3. Construct POST back to the IoTHub with upload status
+
+                FileUploadNotificationResponse notification = new FileUploadNotificationResponse();
+                notification.isSuccess = true;
+                notification.statusCode = 200;
+                notification.statusDescription = "ALL GOOD!";
+
+                string body = JsonConvert.SerializeObject(notification);
+
+                this.httpClientHelper.PostAsync<string>(
+                    GetRequestUri(this.deviceId, CommonConstants.CloudBoundPathTemplate + "notifications/" + getResponseData.correlationId, null),
+                    body,
+                    ExceptionHandlingHelper.GetDefaultErrorMapping(),
+                    null,
+                    CancellationToken.None).Wait();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("\n\nException during file upload: {0}\n\n", ex.Message);
+            }
         }
 
         protected async override Task<Message> OnReceiveAsync(TimeSpan timeout)

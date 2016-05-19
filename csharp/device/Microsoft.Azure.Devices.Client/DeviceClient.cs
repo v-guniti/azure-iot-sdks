@@ -618,13 +618,15 @@ namespace Microsoft.Azure.Devices.Client
 #endif
         }
 
-        public void UploadToBlobAsync(String blobName, System.IO.Stream source)
+#if !PCL
+        public AsyncTask UploadToBlobAsync(String blobName, System.IO.Stream source)
         {
             Console.WriteLine("blobName= {0}, source= {1}", blobName, source);
             Console.WriteLine("IoTHubConnectionString parts:\n");
             HttpTransportHandler httpTransport = new HttpTransportHandler(this.iotHubConnectionString);
-            httpTransport.UploadBlobAsync(blobName, source);
+            return httpTransport.UploadBlobAsync(blobName, source);
         }
+#endif
 
         /// <summary>
         /// Sends a batch of events to device hub

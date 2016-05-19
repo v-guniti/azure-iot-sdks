@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Devices.Client.Samples
         // String containing Hostname, Device Id & Device Key in one of the following formats:
         //  "HostName=<iothub_host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"
         //  "HostName=<iothub_host_name>;CredentialType=SharedAccessSignature;DeviceId=<device_id>;SharedAccessSignature=SharedAccessSignature sr=<iot_host>/devices/<device_id>&sig=<token>&se=<expiry_time>";
-        private const string DeviceConnectionString = "<replace>";
+        private const string DeviceConnectionString = "HostName=FileUploadTest-Client-SDK.private.azure-devices-int.net;DeviceId=Tamer01;SharedAccessKey=Q4JyeYZ9kFGcdhu3T3L8QOd+unY1Fau5UAq+tqvx+Kw=";
 
         private static int MESSAGE_COUNT = 5;
 
@@ -26,7 +26,8 @@ namespace Microsoft.Azure.Devices.Client.Samples
 
                 Console.WriteLine("Uploading File...\n");
                 FileStream fileStreamSource = new FileStream(@"c:\temp\ForFileUpload.txt", FileMode.Open);
-                deviceClient.UploadToBlobAsync(fileStreamSource.Name, fileStreamSource);
+
+                deviceClient.UploadToBlobAsync(Path.GetFileName(fileStreamSource.Name), fileStreamSource).Wait();
 
                 SendEvent(deviceClient).Wait();
                 ReceiveCommands(deviceClient).Wait();
