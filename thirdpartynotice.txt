@@ -21,8 +21,7 @@ THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE
 "Contribution" means:
 
 a) in the case of the initial Contributor, the initial
- code and documentation distributed under this Agreement, and and
-
+ code and documentation distributed under this Agreement, kkl
 b) in the case of each subsequent Contributor:
 
 i) changes to the Program, and
